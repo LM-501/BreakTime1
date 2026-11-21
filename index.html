@@ -1,0 +1,28 @@
+<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BreakTime – Order food, take a break</title><link rel="stylesheet" href="style.css"></head><body>
+<header><div class="logo"><span>⏱</span> BreakTime</div><button id="cartbtn">🛒 Cart (<b id="cc">0</b>)</button></header>
+<section class="hero"><i class="float" style="left:8%;top:20%">🍕</i><i class="float" style="right:10%;top:30%;animation-delay:-2s">🍔</i><i class="float" style="left:18%;bottom:8%;animation-delay:-4s">🍜</i>
+<h1>Break nao. <br>Khabar ashbe.</h1><p>Tomar pochondo-er restaurant theke, dorjay.</p><input id="q" placeholder="Restaurant ba khabar khujo..."></section>
+<div class="chips" id="chips"></div><main class="grid" id="grid"></main>
+<div class="modal" id="m"><div class="sheet" id="sheet"></div></div>
+<script type="module">
+import {init,restaurants,db,fb} from "./data.js";
+import {demo} from "./firebase-config.js";
+let R=[],cart=[],cat="All";const $=s=>document.querySelector(s);
+const toast=t=>{const e=document.createElement("div");e.className="toast";e.textContent=t;document.body.append(e);setTimeout(()=>e.remove(),2200)};
+function draw(){const q=$("#q").value.toLowerCase();
+ $("#chips").innerHTML=["All",...new Set(R.map(r=>r.cat))].map(c=>`<button class="chip ${c==cat?"on":""}" data-c="${c}">${c}</button>`).join("");
+ $("#grid").innerHTML=R.filter(r=>(cat=="All"||r.cat==cat)&&(r.name+r.menu.map(m=>m.n)).toLowerCase().includes(q)).map((r,i)=>`<div class="card" style="animation-delay:${i*70}ms" data-r="${r.id}"><span class="emo">${r.emoji||"🍽"}</span><b>${r.name}</b><div class="mute">${r.cat} · ${r.time||"30 min"}</div></div>`).join("")}
+$("#chips").onclick=e=>{if(e.target.dataset.c){cat=e.target.dataset.c;draw()}};$("#q").oninput=draw;
+$("#grid").onclick=e=>{const c=e.target.closest(".card");if(!c)return;const r=R.find(x=>x.id==c.dataset.r);
+ open(`<h2>${r.emoji} ${r.name}</h2>`+r.menu.map((m,i)=>`<div class="row"><div>${m.n}<div class="price">৳${m.p}</div></div><button data-add="${r.id}:${i}">+ Add</button></div>`).join(""))};
+$("#sheet").onclick=e=>{const a=e.target.dataset.add;if(a){const[id,i]=a.split(":");const r=R.find(x=>x.id==id);cart.push({rid:id,rname:r.name,...r.menu[i]});$("#cc").textContent=cart.length;$("#cartbtn").classList.remove("bump");void $("#cartbtn").offsetWidth;$("#cartbtn").classList.add("bump");toast("Added ✓")}
+ if(e.target.id=="place")place()};
+function open(h){$("#sheet").innerHTML=h;$("#m").classList.add("open")}$("#m").onclick=e=>{if(e.target.id=="m")$("#m").classList.remove("open")};
+$("#cartbtn").onclick=()=>{const t=cart.reduce((s,x)=>s+x.p,0);open(`<h2>Your cart</h2>`+(cart.map(x=>`<div class="row"><span>${x.n} <small class="mute">${x.rname}</small></span><span class="price">৳${x.p}</span></div>`).join("")||"<p class='mute'>Empty</p>")+(cart.length?`<div class="f"><input id="nm" placeholder="Name"><input id="ph" placeholder="Phone"><input id="ad" placeholder="Address"></div><button id="place">Place order · ৳${t}</button>`:""))};
+async function place(){const o={items:cart.map(({n,p,rid})=>({n,p,rid})),restaurantIds:[...new Set(cart.map(c=>c.rid))],total:cart.reduce((s,x)=>s+x.p,0),name:$("#nm").value,phone:$("#ph").value,address:$("#ad").value,status:"new"};
+ if(!o.name||!o.phone||!o.address)return toast("Sob field puron koro");
+ if(!demo){o.createdAt=fb.serverTimestamp();await fb.addDoc(fb.collection(db,"orders"),o)}
+ cart=[];$("#cc").textContent=0;$("#m").classList.remove("open");toast("Order placed! 🎉")}
+await init();R=await restaurants();draw();
+</script></body></html>

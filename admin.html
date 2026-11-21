@@ -1,0 +1,20 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BreakTime Admin</title><link rel="stylesheet" href="style.css"></head><body>
+<header><div class="logo">⏱ BreakTime Admin</div></header>
+<div style="padding:5vw;display:grid;gap:30px;max-width:720px;margin:auto">
+<section><h2>Restaurant add</h2><div class="f"><input id="rn" placeholder="Restaurant name"><input id="rc" placeholder="Category (Biryani, Pizza...)"><input id="re" placeholder="Emoji 🍛"><button id="ar">Save restaurant</button></div></section>
+<section><h2>Khabar add</h2><div class="f"><select id="rs"></select><input id="fn" placeholder="Food name"><input id="fp" type="number" placeholder="Price ৳"><button id="af">Add food</button></div></section>
+<section><h2>Live orders</h2><div id="ords" class="mute">Waiting...</div></section></div>
+<script type="module">
+import {firebaseConfig,demo} from "./firebase-config.js";
+if(demo){document.body.insertAdjacentHTML("beforeend","<p style='padding:5vw'>firebase-config.js e config boshao, tarpor admin kaj korbe.</p>")}else{
+const A=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+const F=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+const db=F.getFirestore(A.initializeApp(firebaseConfig)),$=s=>document.querySelector(s);
+F.onSnapshot(F.collection(db,"restaurants"),s=>$("#rs").innerHTML=s.docs.map(d=>`<option value="${d.id}">${d.data().name}</option>`).join(""));
+$("#ar").onclick=()=>F.addDoc(F.collection(db,"restaurants"),{name:$("#rn").value,cat:$("#rc").value,emoji:$("#re").value,time:"30 min",menu:[]});
+$("#af").onclick=()=>F.updateDoc(F.doc(db,"restaurants",$("#rs").value),{menu:F.arrayUnion({n:$("#fn").value,p:+$("#fp").value})});
+F.onSnapshot(F.query(F.collection(db,"orders"),F.orderBy("createdAt","desc")),s=>{
+ $("#ords").innerHTML=s.docs.map(d=>{const o=d.data();return `<div class="row"><div><b>${o.name}</b> · ${o.phone}<div class="mute">${o.items.map(i=>i.n).join(", ")} — ৳${o.total}</div></div><select data-id="${d.id}">${["new","preparing","on_the_way","delivered"].map(x=>`<option ${x==o.status?"selected":""}>${x}</option>`).join("")}</select></div>`}).join("")||"No orders";
+ s.docChanges().forEach(c=>{if(c.type=="added"&&!s.metadata.hasPendingWrites&&Date.now()-(c.doc.data().createdAt?.toMillis?.()||0)<5000)new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=").play().catch(()=>{})})});
+$("#ords").onchange=e=>F.updateDoc(F.doc(db,"orders",e.target.dataset.id),{status:e.target.value});}
+</script></body></html>
